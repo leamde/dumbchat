@@ -234,18 +234,24 @@ async fn login(
 #[tauri::command]
 async fn debug_login_state(state: tauri::State<'_, AppState>) -> Result<Response, String> {
     info!("Checking login state");
-    let login_data = state.login.lock().unwrap();
-    if let Some(login) = login_data.as_ref() {
-        info!("Login state: User {} is logged in", login.username);
-        Ok(Response {
-            success: true,
-            message: format!("Logged in as {}", login.username),
-            data: Some(login.username.clone()),
-        })
-    } else {
-        error!("Login state: No user logged in");
-        Err("No user logged in".to_string())
-    }
+    let login_data = match state.login.lock() {
+        Ok(guard) => guard.as_ref().ok_or_else(|| {
+            let err = "No user logged in".to_string();
+            error!("{}", err);
+            err
+        })?.clone(),
+        Err(e) => {
+            let err = format!("Failed to lock login state: {}", e);
+            error!("{}", err);
+            return Err(err);
+        }
+    };
+    info!("Login state: User {} is logged in", login_data.username);
+    Ok(Response {
+        success: true,
+        message: format!("Logged in as {}", login_data.username),
+        data: Some(login_data.username.clone()),
+    })
 }
 
 #[tauri::command]
@@ -253,28 +259,32 @@ async fn get_user_info(
     state: tauri::State<'_, AppState>,
 ) -> Result<Response, String> {
     info!("Fetching user info");
-    let login_data = {
-        let guard = state.login.lock().unwrap();
-        guard.as_ref().ok_or_else(|| {
+    let login_data = match state.login.lock() {
+        Ok(guard) => guard.as_ref().ok_or_else(|| {
             let err = "Not logged in".to_string();
             error!("{}", err);
             err
-        })?.clone()
+        })?.clone(),
+        Err(e) => {
+            let err = format!("Failed to lock login state: {}", e);
+            error!("{}", err);
+            return Err(err);
+        }
     };
     debug!("Login data retrieved: username={}", login_data.username);
     let nostr_keys = Keys::parse(&login_data.nostr_private).map_err(|e| {
-        let err = e.to_string();
-        error!("Keys parse failed: {}", err);
+        let err = format!("Keys parse failed: {}", e);
+        error!("{}", err);
         err
     })?;
     debug!("Nostr keys parsed successfully");
     let x25519_secret = hex::decode(&login_data.x25519_private).map_err(|e| {
-        let err = e.to_string();
-        error!("X25519 decode failed: {}", err);
+        let err = format!("X25519 decode failed: {}", e);
+        error!("{}", err);
         err
     })?;
-    let x25519_secret: [u8; 32] = x25519_secret.try_into().map_err(|_| {
-        let err = "Invalid x25519 private key".to_string();
+    let x25519_secret: [u8; 32] = x25519_secret.try_into().map_err(|e| {
+        let err = format!("Invalid x25519 private key: {:?}", e);
         error!("{}", err);
         err
     })?;
@@ -286,8 +296,8 @@ async fn get_user_info(
         data: Some(json!({
             "username": login_data.username,
             "nostr_public": nostr_keys.public_key().to_bech32().map_err(|e| {
-                let err = e.to_string();
-                error!("Bech32 encode failed: {}", err);
+                let err = format!("Bech32 encode failed: {}", e);
+                error!("{}", err);
                 err
             })?,
             "x25519_public": hex::encode(x25519_public.to_bytes())
@@ -303,13 +313,17 @@ async fn init_nostr_client(
     state: tauri::State<'_, AppState>,
 ) -> Result<Response, String> {
     info!("Initializing Nostr client");
-    let login_data = {
-        let guard = state.login.lock().unwrap();
-        guard.as_ref().ok_or_else(|| {
+    let login_data = match state.login.lock() {
+        Ok(guard) => guard.as_ref().ok_or_else(|| {
             let err = "Not logged in".to_string();
             error!("{}", err);
             err
-        })?.clone()
+        })?.clone(),
+        Err(e) => {
+            let err = format!("Failed to lock login state: {}", e);
+            error!("{}", err);
+            return Err(err);
+        }
     };
     debug!("Login data retrieved for Nostr client: username={}", login_data.username);
     let nostr_keys = Keys::parse(&login_data.nostr_private).map_err(|e| {
@@ -594,6 +608,18 @@ async fn receive_nostr_messages(
     })
 }
 
+#[tauri::command]
+async fn reset_window(window: Window) -> Result<(), String> {
+    info!("Resetting window");
+    window.eval("window.location.reload()").map_err(|e| {
+        let err = format!("Failed to reset window: {}", e);
+        error!("{}", err);
+        err
+    })?;
+    info!("Window reset successfully");
+    Ok(())
+}
+
 fn main() {
     tracing_subscriber::fmt()
         .with_env_filter("debug")
@@ -609,7 +635,8 @@ fn main() {
             get_user_info,
             init_nostr_client,
             send_nostr_message,
-            receive_nostr_messages
+            receive_nostr_messages,
+            reset_window
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

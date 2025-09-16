@@ -23,17 +23,6 @@
 
         loading = true;
         try {
-            console.log("Attempting to open devtools...");
-            window.__TAURI__.window
-                .getCurrent()
-                .openDevtools()
-                .catch((err) => {
-                    console.error(
-                        "Failed to open devtools:",
-                        JSON.stringify(err, null, 2),
-                    );
-                });
-
             console.log("Setting up new_message listener...");
             const unlisten = await listen("new_message", (event) => {
                 const payload = event.payload || {};
@@ -58,46 +47,40 @@
             });
             console.log("new_message listener set up successfully");
 
-            console.log("Invoking get_user_info...");
-            const userInfoResponse = await invoke("get_user_info").catch(
-                (err) => {
+            // No invoke calls to isolate routing issue
+            nostrPub = "Not loaded (invoke skipped)";
+            xPub = "Not loaded (invoke skipped)";
+            console.log("Skipping get_user_info to test page load");
+
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            const nostrCanvas = document.getElementById("nostr-qr");
+            const xCanvas = document.getElementById("x-qr");
+            if (nostrCanvas && xCanvas) {
+                try {
+                    console.log("Rendering placeholder QR codes...");
+                    await QRCode.toCanvas(nostrCanvas, nostrPub, { scale: 4 });
+                    await QRCode.toCanvas(xCanvas, xPub, { scale: 4 });
+                    console.log("QR codes rendered successfully");
+                } catch (qrError) {
+                    error = `QR code rendering failed: ${qrError.message || qrError}`;
                     console.error(
-                        "get_user_info failed:",
-                        JSON.stringify(err, null, 2),
+                        "QR code error:",
+                        JSON.stringify(qrError, null, 2),
                     );
-                    throw new Error(
-                        `get_user_info failed: ${err.message || err}`,
-                    );
-                },
-            );
-            console.log(
-                "get_user_info response:",
-                JSON.stringify(userInfoResponse, null, 2),
-            );
-            if (!userInfoResponse.success) {
-                error = userInfoResponse.message;
-                console.error("User info error:", userInfoResponse.message);
-                loading = false;
-                return unlisten;
-            }
-            let data;
-            try {
-                data = JSON.parse(userInfoResponse.data || "{}");
-            } catch (parseError) {
-                error = `Failed to parse user info: ${parseError}`;
+                    loading = false;
+                    return unlisten;
+                }
+            } else {
+                error = "Canvas elements not found";
                 console.error(
-                    "User info parse error:",
-                    JSON.stringify(parseError, null, 2),
+                    "Canvas error: nostrCanvas=",
+                    !!nostrCanvas,
+                    "xCanvas=",
+                    !!xCanvas,
                 );
                 loading = false;
                 return unlisten;
             }
-            nostrPub = data.nostr_public || "";
-            xPub = data.x25519_public || "";
-            console.log(
-                "User info parsed:",
-                JSON.stringify({ nostrPub, xPub }, null, 2),
-            );
 
             loading = false;
             console.log(
