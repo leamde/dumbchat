@@ -1,0 +1,16 @@
+{
+  "identifier": "default",
+  "description": "Default capability for DumbChat with filesystem write access",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [
+        "$APPDATA/**"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+[package]
+name = "dumbchat"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tauri = { version = "=2.6.0", features = ["devtools"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tauri-plugin-fs = "=2.4.1"
+aes-gcm = "0.10.3"
+argon2 = "0.5.3"
+rand = { version = "0.8.5", features = ["getrandom"] }
+ed25519-dalek = { version = "2.1.1", features = ["rand_core"] }
+x25519-dalek = { version = "2.0.1", features = ["static_secrets"] }
+base64 = "0.22.1"
+hex = "0.4.3"
+nostr-sdk = "0.36"
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+reqwest = { version = "0.12", features = ["json"] }
+
+[build-dependencies]
+tauri-build = { version = "=2.4.1", features = [] }
+
+[profile.dev]
+codegen-units = 12
