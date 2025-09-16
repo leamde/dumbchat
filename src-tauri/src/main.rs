@@ -200,7 +200,7 @@ async fn login(
         let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, Params::new(65536, 2, 1, Some(32)).unwrap());
         let mut key = [0u8; 32];
         argon2.hash_password_into(password.as_bytes(), salt_bytes, &mut key).map_err(|e| {
-            let err = format!("Password hashing failed: {}", e);
+            let err = e.to_string();
             error!("{}", err);
             err
         })?;
@@ -395,7 +395,7 @@ async fn send_nostr_message(
     let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
     let ciphertext = cipher.encrypt(&nonce, plaintext.as_bytes()).map_err(|e| {
         let err = e.to_string();
-        error!("Encryption failed: {}", e);
+        error!("Encryption failed: {}", err);
         err
     })?;
     let enc_payload = EncryptedPayload {
@@ -494,23 +494,23 @@ async fn receive_nostr_messages(
             if let RelayPoolNotification::Event { event, .. } = notif {
                 let ev = event.clone();
                 let sender_npub = ev.pubkey.to_bech32().unwrap_or_default();
-                let mut sender_x_pub_opt = None;
+                let mut sender_x_pub_hex = None;
                 for tag in ev.tags.iter() {
                     if let TagKind::Custom(ref kind) = tag.kind() {
                         if *kind == "x_pub" {
                             let tag_values = tag.clone().to_vec();
-                            sender_x_pub_opt = tag_values.get(1).cloned();
+                            sender_x_pub_hex = tag_values.get(1).cloned();
                             break;
                         }
                     }
                 }
-                if let Some(sender_x_pub_hex) = sender_x_pub_opt {
+                if let Some(sender_x_pub_hex) = sender_x_pub_hex {
                     debug!("Found x_pub tag: {}", sender_x_pub_hex);
                     if let Ok(x_priv_bytes) = hex::decode(&x_priv_hex_clone) {
-                        if let Ok(x_priv_arr) = <[u8; 32]>::try_from(&x_priv_bytes[..]) {
+                        if let Ok(x_priv_arr) = <[u8; 32]>::try_from(x_priv_bytes.as_slice()) {
                             let our_secret = StaticSecret::from(x_priv_arr);
                             if let Ok(sx_pub_bytes) = hex::decode(&sender_x_pub_hex) {
-                                if let Ok(sx_pub_arr) = <[u8; 32]>::try_from(&sx_pub_bytes[..]) {
+                                if let Ok(sx_pub_arr) = <[u8; 32]>::try_from(sx_pub_bytes.as_slice()) {
                                     let sender_pub = PublicKey::from(sx_pub_arr);
                                     let shared_secret = our_secret.diffie_hellman(&sender_pub);
                                     let key = Key::<Aes256Gcm>::from_slice(shared_secret.as_bytes());
