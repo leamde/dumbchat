@@ -1,15 +1,16 @@
 <script>
     import { onMount } from "svelte";
-    import { invoke, listen } from "@tauri-apps/api/core";
     import { goto } from "$app/navigation";
-    import QRCode from "qrcode";
     import sanitizeHtml from "sanitize-html";
 
-    let nostrPub = "";
-    let xPub = "";
     let messages = [];
     let error = null;
     let loading = true;
+    let tauriCore = null;
+    let tauriEvent = null;
+    let username = "";
+    let nostrPublic = "";
+    let x25519Public = "";
 
     onMount(async () => {
         console.log("Inbox page mounted at", new Date().toISOString());
@@ -23,8 +24,15 @@
 
         loading = true;
         try {
+            console.log("Dynamically importing @tauri-apps/api/core...");
+            tauriCore = await import("@tauri-apps/api/core");
+            console.log("Tauri core imported successfully");
+            console.log("Dynamically importing @tauri-apps/api/event...");
+            tauriEvent = await import("@tauri-apps/api/event");
+            console.log("Tauri event imported successfully");
+
             console.log("Setting up new_message listener...");
-            const unlisten = await listen("new_message", (event) => {
+            const unlisten = await tauriEvent.listen("new_message", (event) => {
                 const payload = event.payload || {};
                 console.log(
                     "Received new_message:",
@@ -47,37 +55,59 @@
             });
             console.log("new_message listener set up successfully");
 
-            // No invoke calls to isolate routing issue
-            nostrPub = "Not loaded (invoke skipped)";
-            xPub = "Not loaded (invoke skipped)";
-            console.log("Skipping get_user_info to test page load");
-
-            await new Promise((resolve) => setTimeout(resolve, 100));
-            const nostrCanvas = document.getElementById("nostr-qr");
-            const xCanvas = document.getElementById("x-qr");
-            if (nostrCanvas && xCanvas) {
-                try {
-                    console.log("Rendering placeholder QR codes...");
-                    await QRCode.toCanvas(nostrCanvas, nostrPub, { scale: 4 });
-                    await QRCode.toCanvas(xCanvas, xPub, { scale: 4 });
-                    console.log("QR codes rendered successfully");
-                } catch (qrError) {
-                    error = `QR code rendering failed: ${qrError.message || qrError}`;
-                    console.error(
-                        "QR code error:",
-                        JSON.stringify(qrError, null, 2),
-                    );
-                    loading = false;
-                    return unlisten;
-                }
-            } else {
-                error = "Canvas elements not found";
+            console.log("Invoking get_user_info...");
+            const userInfoResponse = await tauriCore.invoke("get_user_info");
+            console.log(
+                "get_user_info response:",
+                JSON.stringify(userInfoResponse, null, 2),
+            );
+            if (!userInfoResponse.success) {
+                error = userInfoResponse.message;
+                console.error("User info error:", userInfoResponse.message);
+                loading = false;
+                return unlisten;
+            }
+            let data;
+            try {
+                data = JSON.parse(userInfoResponse.data || "{}");
+                username = data.username || "Unknown";
+                nostrPublic = data.nostr_public || "Not available";
+                x25519Public = data.x25519_public || "Not available";
+            } catch (parseError) {
+                error = `Failed to parse user info: ${parseError}`;
                 console.error(
-                    "Canvas error: nostrCanvas=",
-                    !!nostrCanvas,
-                    "xCanvas=",
-                    !!xCanvas,
+                    "User info parse error:",
+                    JSON.stringify(parseError, null, 2),
                 );
+                loading = false;
+                return unlisten;
+            }
+            console.log("User info parsed:", JSON.stringify(data, null, 2));
+
+            console.log("Invoking init_nostr_client...");
+            const initResponse = await tauriCore.invoke("init_nostr_client");
+            console.log(
+                "init_nostr_client response:",
+                JSON.stringify(initResponse, null, 2),
+            );
+            if (!initResponse.success) {
+                error = initResponse.message;
+                console.error("Nostr client error:", initResponse.message);
+                loading = false;
+                return unlisten;
+            }
+
+            console.log("Invoking receive_nostr_messages...");
+            const receiveResponse = await tauriCore.invoke(
+                "receive_nostr_messages",
+            );
+            console.log(
+                "receive_nostr_messages response:",
+                JSON.stringify(receiveResponse, null, 2),
+            );
+            if (!receiveResponse.success) {
+                error = receiveResponse.message;
+                console.error("Receive error:", receiveResponse.message);
                 loading = false;
                 return unlisten;
             }
@@ -111,11 +141,10 @@
     {/if}
     {#if !loading && !error}
         <div>
-            <h2>Your Keys (Share these to chat)</h2>
-            <p>Nostr Pub: {nostrPub || "Not available"}</p>
-            <canvas id="nostr-qr"></canvas>
-            <p>X25519 Pub: {xPub || "Not available"}</p>
-            <canvas id="x-qr"></canvas>
+            <h2>User Info</h2>
+            <p>Username: {username}</p>
+            <p>Nostr Public Key: {nostrPublic}</p>
+            <p>X25519 Public Key: {x25519Public}</p>
         </div>
         <div>
             <h2>Messages</h2>

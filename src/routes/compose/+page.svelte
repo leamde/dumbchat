@@ -1,110 +1,106 @@
 <script>
-    import { onMount, afterUpdate } from "svelte";
-    import { invoke } from "@tauri-apps/api/core";
+    import { onMount } from "svelte";
     import { goto } from "$app/navigation";
     import { Editor } from "@tiptap/core";
     import StarterKit from "@tiptap/starter-kit";
 
+    let editor;
+    let error = null;
     let recipientNostrPub = "";
     let recipientXPub = "";
-    let editor = null;
-    let editorElement = null;
-    let message = "";
-    let error = null;
-    let loading = true;
+    let tauriCore = null;
 
     onMount(async () => {
-        console.log("Compose page mounted");
+        console.log("Compose page mounted at", new Date().toISOString());
+        await new Promise((resolve) => setTimeout(resolve, 100));
         if (!window.__TAURI__) {
             error = "Tauri runtime not available";
             console.error("Tauri runtime not available");
-            loading = false;
             return;
         }
-        loading = false;
-    });
 
-    afterUpdate(() => {
-        if (editorElement && !editor) {
-            console.log("Initializing TipTap editor...");
-            try {
-                editor = new Editor({
-                    element: editorElement,
-                    extensions: [StarterKit],
-                    content: "",
-                    onUpdate: ({ editor }) => {
-                        message = editor.getHTML();
-                        console.log("Editor updated, message:", message);
-                    },
-                });
-                console.log("TipTap editor initialized");
-            } catch (editorError) {
-                error = `Editor initialization failed: ${editorError.message || editorError}`;
-                console.error("Editor error:", editorError);
-            }
+        try {
+            console.log("Dynamically importing @tauri-apps/api/core...");
+            tauriCore = await import("@tauri-apps/api/core");
+            console.log("Tauri core imported successfully");
+
+            editor = new Editor({
+                element: document.querySelector(".editor"),
+                extensions: [StarterKit],
+                content: "<p>Type your message here...</p>",
+            });
+            console.log("TipTap editor initialized");
+        } catch (err) {
+            error = `Compose initialization failed: ${err.message || err}`;
+            console.error("Compose init error:", JSON.stringify(err, null, 2));
         }
+
+        return () => {
+            if (editor) {
+                editor.destroy();
+            }
+        };
     });
 
     async function sendMessage() {
-        if (!recipientNostrPub || !recipientXPub || !message) {
-            error = "Fill all fields";
-            console.error("Send error: Missing fields");
+        if (!editor || !recipientNostrPub || !recipientXPub) {
+            error = "Please provide recipient keys and ensure editor is loaded";
+            console.error("Send message validation failed", {
+                recipientNostrPub,
+                recipientXPub,
+            });
             return;
         }
+
         try {
-            console.log("Sending message...");
-            const response = await invoke("send_nostr_message", {
-                recipient_nostr_pub: recipientNostrPub,
-                recipient_x_pub: recipientXPub,
-                text: message,
+            const text = editor.getHTML();
+            console.log("Invoking send_nostr_message...", {
+                recipientNostrPub,
+                recipientXPub,
+                text,
             });
-            console.log("Send response:", response);
+            const response = await tauriCore.invoke("send_nostr_message", {
+                recipientNostrPub,
+                recipientXPub,
+                text,
+            });
+            console.log(
+                "send_nostr_message response:",
+                JSON.stringify(response, null, 2),
+            );
             if (response.success) {
-                editor?.commands.clearContent();
-                message = "";
-                error = null;
-                console.log("Message sent successfully");
-                goto("/inbox"); // Return to inbox after sending
+                console.log("Message sent, navigating to inbox");
+                window.location.href = "/inbox";
             } else {
                 error = response.message;
-                console.error("Send error:", response.message);
+                console.error("Send message error:", response.message);
             }
         } catch (err) {
-            error = `Send failed: ${err.message || err}`;
-            console.error("Send error:", err);
+            error = `Send message failed: ${err.message || err}`;
+            console.error("Send message error:", JSON.stringify(err, null, 2));
         }
-    }
-
-    function goToInbox() {
-        console.log("Navigating to inbox");
-        goto("/inbox");
     }
 </script>
 
 <main>
     <h1>Compose Message</h1>
-    {#if loading}
-        <p>Loading...</p>
-    {/if}
     {#if error}
         <p style="color: red;">{error}</p>
     {/if}
-    {#if !loading && !error}
-        <div>
-            <h2>Send Message</h2>
-            <input
-                bind:value={recipientNostrPub}
-                placeholder="Recipient Nostr Pub (npub...)"
-            />
-            <input
-                bind:value={recipientXPub}
-                placeholder="Recipient X25519 Pub (hex)"
-            />
-            <div class="editor" bind:this={editorElement}></div>
-            <button on:click={sendMessage}>Send</button>
-            <button on:click={goToInbox}>Back to Inbox</button>
-        </div>
-    {/if}
+    <div>
+        <input
+            type="text"
+            bind:value={recipientNostrPub}
+            placeholder="Recipient Nostr Public Key"
+        />
+        <input
+            type="text"
+            bind:value={recipientXPub}
+            placeholder="Recipient X25519 Public Key"
+        />
+        <div class="editor"></div>
+        <button on:click={sendMessage}>Send Message</button>
+    </div>
 </main>
 
 <style>
@@ -113,18 +109,18 @@
         max-width: 800px;
         margin: 0 auto;
     }
-    .editor {
-        border: 1px solid #ccc;
-        padding: 1rem;
-        min-height: 200px;
-        margin-bottom: 1rem;
-    }
     input {
         padding: 0.8rem;
         font-size: 1.2rem;
         border: 1px solid #ccc;
         border-radius: 5px;
+        margin-bottom: 1rem;
         width: 100%;
+    }
+    .editor {
+        border: 1px solid #ccc;
+        padding: 1rem;
+        min-height: 200px;
         margin-bottom: 1rem;
     }
     button {
@@ -136,7 +132,6 @@
         border-radius: 5px;
         cursor: pointer;
         transition: background-color 0.2s;
-        margin-right: 1rem;
     }
     button:hover {
         background-color: #0056b3;

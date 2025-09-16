@@ -1,5 +1,4 @@
 <script>
-  import { goto } from "$app/navigation";
   import { invoke } from "@tauri-apps/api/core";
 
   let username = "";
@@ -26,10 +25,10 @@
       console.log("Login response:", JSON.stringify(response, null, 2));
       message = response.message;
       if (response.success) {
-        console.log("Login successful, navigating to /inbox");
+        console.log("Navigating to /inbox with full reload");
         try {
-          await goto("/inbox");
-          console.log("Navigation to /inbox triggered");
+          window.location.href = "/inbox";
+          console.log("Navigation to /inbox triggered successfully");
         } catch (navError) {
           message = `Navigation to inbox failed: ${navError.message || navError}`;
           console.error("Navigation error:", JSON.stringify(navError, null, 2));
@@ -100,10 +99,10 @@
       );
       message = response.message;
       if (response.success) {
-        console.log("Continue login successful, navigating to /inbox");
+        console.log("Navigating to /inbox with full reload");
         try {
-          await goto("/inbox");
-          console.log("Navigation to /inbox triggered");
+          window.location.href = "/inbox";
+          console.log("Navigation to /inbox triggered successfully");
         } catch (navError) {
           message = `Navigation to inbox failed: ${navError.message || navError}`;
           console.error("Navigation error:", JSON.stringify(navError, null, 2));

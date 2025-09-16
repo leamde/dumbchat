@@ -8,7 +8,7 @@ use argon2::{Argon2, Algorithm, Version, Params};
 use argon2::password_hash::SaltString;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tauri::{Manager, Emitter, Window};
+use tauri::{Manager, Emitter};
 use tauri_plugin_fs;
 use ed25519_dalek::SigningKey;
 use x25519_dalek::{StaticSecret, PublicKey};
@@ -608,18 +608,6 @@ async fn receive_nostr_messages(
     })
 }
 
-#[tauri::command]
-async fn reset_window(window: Window) -> Result<(), String> {
-    info!("Resetting window");
-    window.eval("window.location.reload()").map_err(|e| {
-        let err = format!("Failed to reset window: {}", e);
-        error!("{}", err);
-        err
-    })?;
-    info!("Window reset successfully");
-    Ok(())
-}
-
 fn main() {
     tracing_subscriber::fmt()
         .with_env_filter("debug")
@@ -635,8 +623,7 @@ fn main() {
             get_user_info,
             init_nostr_client,
             send_nostr_message,
-            receive_nostr_messages,
-            reset_window
+            receive_nostr_messages
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
