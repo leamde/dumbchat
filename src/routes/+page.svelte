@@ -23,18 +23,23 @@
         password,
         recoveryKey: recoveryKey || null,
       });
-      console.log("Login response:", response);
+      console.log("Login response:", JSON.stringify(response, null, 2));
       message = response.message;
       if (response.success) {
         console.log("Login successful, navigating to /inbox");
-        await goto("/inbox");
-        console.log("Navigation to /inbox triggered");
+        try {
+          await goto("/inbox");
+          console.log("Navigation to /inbox triggered");
+        } catch (navError) {
+          message = `Navigation to inbox failed: ${navError.message || navError}`;
+          console.error("Navigation error:", JSON.stringify(navError, null, 2));
+        }
       } else {
         console.error("Login failed:", response.message);
       }
     } catch (error) {
-      message = `Login failed: ${error}`;
-      console.error("Login error:", error);
+      message = `Login failed: ${error.message || error}`;
+      console.error("Login error:", JSON.stringify(error, null, 2));
     }
   }
 
@@ -50,7 +55,10 @@
     try {
       console.log("Invoking create_account command...");
       const response = await invoke("create_account", { username, password });
-      console.log("Create account response:", response);
+      console.log(
+        "Create account response:",
+        JSON.stringify(response, null, 2),
+      );
       message = response.message;
       if (response.success && response.data) {
         recoveryKey = response.data;
@@ -62,8 +70,8 @@
         console.error("Create account failed:", response.message);
       }
     } catch (error) {
-      message = `Error creating account: ${error}`;
-      console.error("Create account error:", error);
+      message = `Error creating account: ${error.message || error}`;
+      console.error("Create account error:", JSON.stringify(error, null, 2));
     }
   }
 
@@ -86,18 +94,26 @@
         password: createdPassword,
         recoveryKey: null,
       });
-      console.log("Continue login response:", response);
+      console.log(
+        "Continue login response:",
+        JSON.stringify(response, null, 2),
+      );
       message = response.message;
       if (response.success) {
         console.log("Continue login successful, navigating to /inbox");
-        await goto("/inbox");
-        console.log("Navigation to /inbox triggered");
+        try {
+          await goto("/inbox");
+          console.log("Navigation to /inbox triggered");
+        } catch (navError) {
+          message = `Navigation to inbox failed: ${navError.message || navError}`;
+          console.error("Navigation error:", JSON.stringify(navError, null, 2));
+        }
       } else {
         console.error("Continue login failed:", response.message);
       }
     } catch (error) {
-      message = `Login failed: ${error}`;
-      console.error("Continue login error:", error);
+      message = `Login failed: ${error.message || error}`;
+      console.error("Continue login error:", JSON.stringify(error, null, 2));
     }
   }
 
@@ -108,8 +124,8 @@
       message = "Recovery key copied to clipboard!";
       console.log("Recovery key copied successfully");
     } catch (error) {
-      message = `Failed to copy recovery key: ${error}`;
-      console.error("Copy recovery key error:", error);
+      message = `Failed to copy recovery key: ${error.message || error}`;
+      console.error("Copy recovery key error:", JSON.stringify(error, null, 2));
     }
   }
 </script>

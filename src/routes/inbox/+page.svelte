@@ -23,16 +23,24 @@
 
         loading = true;
         try {
-            console.log("Invoking open_devtools...");
-            await invoke("open_devtools").catch((err) => {
-                console.error("Failed to open devtools:", err);
-            });
-            console.log("Devtools command invoked");
+            console.log("Attempting to open devtools...");
+            window.__TAURI__.window
+                .getCurrent()
+                .openDevtools()
+                .catch((err) => {
+                    console.error(
+                        "Failed to open devtools:",
+                        JSON.stringify(err, null, 2),
+                    );
+                });
 
             console.log("Setting up new_message listener...");
             const unlisten = await listen("new_message", (event) => {
                 const payload = event.payload || {};
-                console.log("Received new_message:", payload);
+                console.log(
+                    "Received new_message:",
+                    JSON.stringify(payload, null, 2),
+                );
                 messages = [
                     ...messages,
                     {
@@ -51,8 +59,21 @@
             console.log("new_message listener set up successfully");
 
             console.log("Invoking get_user_info...");
-            const userInfoResponse = await invoke("get_user_info");
-            console.log("get_user_info response:", userInfoResponse);
+            const userInfoResponse = await invoke("get_user_info").catch(
+                (err) => {
+                    console.error(
+                        "get_user_info failed:",
+                        JSON.stringify(err, null, 2),
+                    );
+                    throw new Error(
+                        `get_user_info failed: ${err.message || err}`,
+                    );
+                },
+            );
+            console.log(
+                "get_user_info response:",
+                JSON.stringify(userInfoResponse, null, 2),
+            );
             if (!userInfoResponse.success) {
                 error = userInfoResponse.message;
                 console.error("User info error:", userInfoResponse.message);
@@ -64,64 +85,19 @@
                 data = JSON.parse(userInfoResponse.data || "{}");
             } catch (parseError) {
                 error = `Failed to parse user info: ${parseError}`;
-                console.error("User info parse error:", parseError);
+                console.error(
+                    "User info parse error:",
+                    JSON.stringify(parseError, null, 2),
+                );
                 loading = false;
                 return unlisten;
             }
             nostrPub = data.nostr_public || "";
             xPub = data.x25519_public || "";
-            console.log("User info parsed:", { nostrPub, xPub });
-
-            console.log("Invoking init_nostr_client...");
-            const initResponse = await invoke("init_nostr_client");
-            console.log("init_nostr_client response:", initResponse);
-            if (!initResponse.success) {
-                error = initResponse.message;
-                console.error("Nostr client error:", initResponse.message);
-                loading = false;
-                return unlisten;
-            }
-
-            console.log("Invoking receive_nostr_messages...");
-            const receiveResponse = await invoke("receive_nostr_messages");
-            console.log("receive_nostr_messages response:", receiveResponse);
-            if (!receiveResponse.success) {
-                error = receiveResponse.message;
-                console.error("Receive error:", receiveResponse.message);
-                loading = false;
-                return unlisten;
-            }
-
-            await new Promise((resolve) => setTimeout(resolve, 100));
-            const nostrCanvas = document.getElementById("nostr-qr");
-            const xCanvas = document.getElementById("x-qr");
-            if (nostrCanvas && xCanvas && nostrPub && xPub) {
-                try {
-                    console.log("Rendering QR codes...");
-                    await QRCode.toCanvas(nostrCanvas, nostrPub, { scale: 4 });
-                    await QRCode.toCanvas(xCanvas, xPub, { scale: 4 });
-                    console.log("QR codes rendered successfully");
-                } catch (qrError) {
-                    error = `QR code rendering failed: ${qrError.message || qrError}`;
-                    console.error("QR code error:", qrError);
-                    loading = false;
-                    return unlisten;
-                }
-            } else {
-                error = "Canvas elements or public keys not found";
-                console.error(
-                    "Canvas error: nostrCanvas=",
-                    !!nostrCanvas,
-                    "xCanvas=",
-                    !!xCanvas,
-                    "nostrPub=",
-                    !!nostrPub,
-                    "xPub=",
-                    !!xPub,
-                );
-                loading = false;
-                return unlisten;
-            }
+            console.log(
+                "User info parsed:",
+                JSON.stringify({ nostrPub, xPub }, null, 2),
+            );
 
             loading = false;
             console.log(
@@ -131,7 +107,7 @@
             return unlisten;
         } catch (err) {
             error = `Inbox initialization failed: ${err.message || err}`;
-            console.error("Inbox init error:", err);
+            console.error("Inbox init error:", JSON.stringify(err, null, 2));
             loading = false;
         }
     });

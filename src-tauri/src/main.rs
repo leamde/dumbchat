@@ -8,7 +8,7 @@ use argon2::{Argon2, Algorithm, Version, Params};
 use argon2::password_hash::SaltString;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tauri::{Manager, Emitter};
+use tauri::{Manager, Emitter, Window};
 use tauri_plugin_fs;
 use ed25519_dalek::SigningKey;
 use x25519_dalek::{StaticSecret, PublicKey};
@@ -450,13 +450,17 @@ async fn receive_nostr_messages(
     window: tauri::Window,
 ) -> Result<Response, String> {
     info!("Starting to receive Nostr messages");
-    let login_data = {
-        let guard = state.login.lock().unwrap();
-        guard.as_ref().ok_or_else(|| {
+    let login_data = match state.login.lock() {
+        Ok(guard) => guard.as_ref().ok_or_else(|| {
             let err = "Not logged in".to_string();
             error!("{}", err);
             err
-        })?.clone()
+        })?.clone(),
+        Err(e) => {
+            let err = format!("Failed to lock login state: {}", e);
+            error!("{}", err);
+            return Err(err);
+        }
     };
     debug!("Login data retrieved for receiving messages: username={}", login_data.username);
     let nostr_keys = Keys::parse(&login_data.nostr_private).map_err(|e| {
@@ -466,22 +470,29 @@ async fn receive_nostr_messages(
     })?;
     let our_pubkey = nostr_keys.public_key();
     debug!("Nostr public key retrieved: {:?}", our_pubkey);
-    let client = state.nostr_client.lock().unwrap().clone().ok_or_else(|| {
-        let err = "No client".to_string();
-        error!("{}", err);
-        err
-    })?;
+    let client = match state.nostr_client.lock() {
+        Ok(guard) => guard.clone().ok_or_else(|| {
+            let err = "No client".to_string();
+            error!("{}", err);
+            err
+        })?,
+        Err(e) => {
+            let err = format!("Failed to lock nostr client: {}", e);
+            error!("{}", err);
+            return Err(err);
+        }
+    };
     debug!("Nostr client retrieved for subscription");
     let filter = Filter::new()
         .kind(Kind::EncryptedDirectMessage)
         .pubkey(our_pubkey)
         .limit(50);
     debug!("Subscribing with filter: {:?}", filter);
-    client.subscribe(vec![filter], None).await.map_err(|e| {
-        let err = e.to_string();
-        error!("Subscribe failed: {}", err);
-        err
-    })?;
+    if let Err(e) = client.subscribe(vec![filter], None).await {
+        let err = format!("Subscribe failed: {}", e);
+        error!("{}", err);
+        return Err(err);
+    }
     debug!("Subscribed to Nostr events");
     let window_clone = window.clone();
     let client_clone = client.clone();
