@@ -24,47 +24,36 @@
 
         try {
             console.log("Dynamically importing @tauri-apps/api/core...");
-            tauriCore = await import("@tauri-apps/api/core");
+            tauriCore = await import("@tauri-apps/api/core").catch((err) => {
+                throw new Error(
+                    `Failed to import @tauri-apps/api/core: ${err.message}`,
+                );
+            });
             console.log("Tauri core imported successfully");
 
-            console.log("Dynamically importing TipTap modules...");
-            const { Editor } = await import("@tiptap/core");
-            console.log("Imported Editor");
-            const StarterKit = await import("@tiptap/starter-kit");
-            console.log("Imported StarterKit");
-            const Placeholder = await import("@tiptap/extension-placeholder");
-            console.log("Imported Placeholder");
-            const TextStyle = await import("@tiptap/extension-text-style");
-            console.log("Imported TextStyle");
-            const Color = await import("@tiptap/extension-color");
-            console.log("Imported Color");
-            const Highlight = await import("@tiptap/extension-highlight");
-            console.log("Imported Highlight");
-            const Underline = await import("@tiptap/extension-underline");
-            console.log("Imported Underline");
-            const Strike = await import("@tiptap/extension-strike");
-            console.log("Imported Strike");
-            const BulletList = await import("@tiptap/extension-bullet-list");
-            console.log("Imported BulletList");
-            const OrderedList = await import("@tiptap/extension-ordered-list");
-            console.log("Imported OrderedList");
-            const ListItem = await import("@tiptap/extension-list-item");
-            console.log("Imported ListItem");
-            const Table = await import("@tiptap/extension-table");
-            console.log("Imported Table");
-            const TableCell = await import("@tiptap/extension-table-cell");
-            console.log("Imported TableCell");
-            const TableHeader = await import("@tiptap/extension-table-header");
-            console.log("Imported TableHeader");
-            const TableRow = await import("@tiptap/extension-table-row");
-            console.log("Imported TableRow");
-            const Link = await import("@tiptap/extension-link");
-            console.log("Imported Link");
-            const CodeBlock = await import("@tiptap/extension-code-block");
-            console.log("Imported CodeBlock");
-            const Typography = await import("@tiptap/extension-typography");
-            console.log("Imported Typography");
-            console.log("TipTap modules imported successfully");
+            console.log("Dynamically importing TipTap core modules...");
+            const { Editor } = await import("@tiptap/core").catch((err) => {
+                throw new Error(
+                    `Failed to import @tiptap/core: ${err.message}`,
+                );
+            });
+            console.log("Imported @tiptap/core");
+            const StarterKit = await import("@tiptap/starter-kit").catch(
+                (err) => {
+                    throw new Error(
+                        `Failed to import @tiptap/starter-kit: ${err.message}`,
+                    );
+                },
+            );
+            console.log("Imported @tiptap/starter-kit");
+            const Placeholder = await import(
+                "@tiptap/extension-placeholder"
+            ).catch((err) => {
+                throw new Error(
+                    `Failed to import @tiptap/extension-placeholder: ${err.message}`,
+                );
+            });
+            console.log("Imported @tiptap/extension-placeholder");
 
             const editorElement = document.querySelector(".editor");
             if (!editorElement) {
@@ -75,6 +64,169 @@
 
             editor = new Editor({
                 element: editorElement,
+                extensions: [
+                    StarterKit.default.configure({
+                        heading: { levels: [1, 2, 3] },
+                    }),
+                    Placeholder.default.configure({
+                        placeholder: "Type your message here...",
+                    }),
+                ],
+                content: "",
+                onUpdate: ({ editor }) => {
+                    console.log("Editor updated, content:", editor.getHTML());
+                },
+            });
+            console.log("TipTap editor initialized with minimal features");
+
+            // Add full suite of extensions
+            console.log(
+                "Dynamically importing additional TipTap extensions...",
+            );
+            const TextStyle = await import(
+                "@tiptap/extension-text-style"
+            ).catch((err) => {
+                throw new Error(
+                    `Failed to import @tiptap/extension-text-style: ${err.message}`,
+                );
+            });
+            console.log("Imported @tiptap/extension-text-style");
+            const Color = await import("@tiptap/extension-color").catch(
+                (err) => {
+                    throw new Error(
+                        `Failed to import @tiptap/extension-color: ${err.message}`,
+                    );
+                },
+            );
+            console.log("Imported @tiptap/extension-color");
+            const Highlight = await import("@tiptap/extension-highlight").catch(
+                (err) => {
+                    throw new Error(
+                        `Failed to import @tiptap/extension-highlight: ${err.message}`,
+                    );
+                },
+            );
+            console.log("Imported @tiptap/extension-highlight");
+            const Underline = await import("@tiptap/extension-underline").catch(
+                (err) => {
+                    throw new Error(
+                        `Failed to import @tiptap/extension-underline: ${err.message}`,
+                    );
+                },
+            );
+            console.log("Imported @tiptap/extension-underline");
+            const Strike = await import("@tiptap/extension-strike").catch(
+                (err) => {
+                    throw new Error(
+                        `Failed to import @tiptap/extension-strike: ${err.message}`,
+                    );
+                },
+            );
+            console.log("Imported @tiptap/extension-strike");
+            const BulletList = await import(
+                "@tiptap/extension-bullet-list"
+            ).catch((err) => {
+                throw new Error(
+                    `Failed to import @tiptap/extension-bullet-list: ${err.message}`,
+                );
+            });
+            console.log("Imported @tiptap/extension-bullet-list");
+            const OrderedList = await import(
+                "@tiptap/extension-ordered-list"
+            ).catch((err) => {
+                throw new Error(
+                    `Failed to import @tiptap/extension-ordered-list: ${err.message}`,
+                );
+            });
+            console.log("Imported @tiptap/extension-ordered-list");
+            const ListItem = await import("@tiptap/extension-list-item").catch(
+                (err) => {
+                    throw new Error(
+                        `Failed to import @tiptap/extension-list-item: ${err.message}`,
+                    );
+                },
+            );
+            console.log("Imported @tiptap/extension-list-item");
+            const Table = await import("@tiptap/extension-table").catch(
+                (err) => {
+                    throw new Error(
+                        `Failed to import @tiptap/extension-table: ${err.message}`,
+                    );
+                },
+            );
+            console.log("Imported @tiptap/extension-table");
+            const TableCell = await import(
+                "@tiptap/extension-table-cell"
+            ).catch((err) => {
+                throw new Error(
+                    `Failed to import @tiptap/extension-table-cell: ${err.message}`,
+                );
+            });
+            console.log("Imported @tiptap/extension-table-cell");
+            const TableHeader = await import(
+                "@tiptap/extension-table-header"
+            ).catch((err) => {
+                throw new Error(
+                    `Failed to import @tiptap/extension-table-header: ${err.message}`,
+                );
+            });
+            console.log("Imported @tiptap/extension-table-header");
+            const TableRow = await import("@tiptap/extension-table-row").catch(
+                (err) => {
+                    throw new Error(
+                        `Failed to import @tiptap/extension-table-row: ${err.message}`,
+                    );
+                },
+            );
+            console.log("Imported @tiptap/extension-table-row");
+            const Link = await import("@tiptap/extension-link").catch((err) => {
+                throw new Error(
+                    `Failed to import @tiptap/extension-link: ${err.message}`,
+                );
+            });
+            console.log("Imported @tiptap/extension-link");
+            const CodeBlock = await import(
+                "@tiptap/extension-code-block"
+            ).catch((err) => {
+                throw new Error(
+                    `Failed to import @tiptap/extension-code-block: ${err.message}`,
+                );
+            });
+            console.log("Imported @tiptap/extension-code-block");
+            const Typography = await import(
+                "@tiptap/extension-typography"
+            ).catch((err) => {
+                throw new Error(
+                    `Failed to import @tiptap/extension-typography: ${err.message}`,
+                );
+            });
+            console.log("Imported @tiptap/extension-typography");
+            const FontFamily = await import(
+                "@tiptap/extension-font-family"
+            ).catch((err) => {
+                throw new Error(
+                    `Failed to import @tiptap/extension-font-family: ${err.message}`,
+                );
+            });
+            console.log("Imported @tiptap/extension-font-family");
+            const TextAlign = await import(
+                "@tiptap/extension-text-align"
+            ).catch((err) => {
+                throw new Error(
+                    `Failed to import @tiptap/extension-text-align: ${err.message}`,
+                );
+            });
+            console.log("Imported @tiptap/extension-text-align");
+            const FontSize = await import("./font-size.js").catch((err) => {
+                throw new Error(
+                    `Failed to import ./font-size.js: ${err.message}`,
+                );
+            });
+            console.log("Imported ./font-size.js");
+            console.log("All TipTap extensions imported successfully");
+
+            // Update editor with full suite
+            editor.setOptions({
                 extensions: [
                     StarterKit.default.configure({
                         heading: { levels: [1, 2, 3] },
@@ -101,15 +253,14 @@
                     }),
                     CodeBlock.default,
                     Typography.default,
+                    FontFamily.default,
+                    TextAlign.default.configure({
+                        types: ["heading", "paragraph"],
+                    }),
+                    FontSize.default,
                 ],
-                content: "",
-                onUpdate: ({ editor }) => {
-                    console.log("Editor updated, content:", editor.getHTML());
-                },
             });
-            console.log(
-                "TipTap editor initialized with full suite of features",
-            );
+            console.log("TipTap editor updated with full suite of features");
         } catch (err) {
             error = `Compose initialization failed: ${err.message || err}`;
             console.error("Compose init error:", JSON.stringify(err, null, 2));
